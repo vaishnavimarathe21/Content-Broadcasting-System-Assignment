@@ -1,0 +1,75 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String    @id @default(uuid())
+  name             String
+  email            String    @unique
+  passwordHash     String
+  role             Role      // PRINCIPAL or TEACHER
+  createdAt        DateTime  @default(now())
+
+  uploadedContents Content[] @relation("UploadedBy")
+  approvedContents Content[] @relation("ApprovedBy")
+}
+
+enum Role {
+  PRINCIPAL
+  TEACHER
+}
+
+enum ContentStatus {
+  UPLOADED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Content {
+  id               String        @id @default(uuid())
+  title            String
+  description      String?
+  subject          String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  status           ContentStatus @default(UPLOADED)
+  rejectionReason  String?
+  createdAt        DateTime      @default(now())
+  approvedAt       DateTime?
+
+  uploadedById     String
+  uploadedBy       User          @relation("UploadedBy", fields: [uploadedById], references: [id])
+  approvedById     String?
+  approvedBy       User?         @relation("ApprovedBy", fields: [approvedById], references: [id])
+
+  schedules        ContentSchedule[]
+}
+
+model ContentSlot {
+  id               String    @id @default(uuid())
+  subject          String    @unique
+  createdAt        DateTime  @default(now())
+
+  schedules        ContentSchedule[]
+}
+
+model ContentSchedule {
+  id               String    @id @default(uuid())
+  contentId        String
+  content          Content   @relation(fields: [contentId], references: [id])
+  slotId           String
+  slot             ContentSlot @relation(fields: [slotId], references: [id])
+  
+  startTime        DateTime? // When content becomes visible
+  endTime          DateTime? // When content stops being visible
+  rotationOrder    Int
+  durationMinutes  Int
+  createdAt        DateTime  @default(now())
+}

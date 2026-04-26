@@ -1,0 +1,218 @@
+{
+	"info": {
+		"_postman_id": "0df006d6-6a56-4b8c-b0cf-5b643a6d7f3e",
+		"name": "GrubPac Content Broadcasting API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Auth",
+			"item": [
+				{
+					"name": "Register Teacher",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Teacher\",\n    \"email\": \"teacher@school.com\",\n    \"password\": \"password123\",\n    \"role\": \"TEACHER\"\n}"
+						},
+						"url": { "raw": "http://localhost:3000/api/auth/register", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "auth", "register"] }
+					}
+				},
+				{
+					"name": "Register Principal",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Principal Smith\",\n    \"email\": \"principal@school.com\",\n    \"password\": \"password123\",\n    \"role\": \"PRINCIPAL\"\n}"
+						},
+						"url": { "raw": "http://localhost:3000/api/auth/register", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "auth", "register"] }
+					}
+				},
+				{
+					"name": "Login Teacher",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"teacher@school.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": { "raw": "http://localhost:3000/api/auth/login", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "auth", "login"] }
+					}
+				},
+				{
+					"name": "Login Principal",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"principal@school.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": { "raw": "http://localhost:3000/api/auth/login", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "auth", "login"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "2. Teacher Flow",
+			"item": [
+				{
+					"name": "Upload Content",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_TEACHER_TOKEN_HERE"}],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{"key": "title", "value": "Maths Chapter 1", "type": "text"},
+								{"key": "subject", "value": "Maths", "type": "text"},
+								{"key": "description", "value": "Algebra basics for Class 10", "type": "text"},
+								{"key": "file", "type": "file", "src": []},
+								{"key": "startTime", "value": "2026-04-01T00:00:00.000Z", "type": "text"},
+								{"key": "endTime", "value": "2026-05-01T00:00:00.000Z", "type": "text"},
+								{"key": "rotationDuration", "value": "5", "type": "text"}
+							]
+						},
+						"url": { "raw": "http://localhost:3000/api/content/upload", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "content", "upload"] }
+					}
+				},
+				{
+					"name": "My Uploads (View Status)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_TEACHER_TOKEN_HERE"}],
+						"url": { "raw": "http://localhost:3000/api/content/my-uploads", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "content", "my-uploads"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "3. Principal Flow",
+			"item": [
+				{
+					"name": "View All Content (with pagination & filters)",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"}],
+						"url": {
+							"raw": "http://localhost:3000/api/admin/content/all?page=1&limit=20",
+							"protocol": "http", "host": ["localhost"], "port": "3000",
+							"path": ["api", "admin", "content", "all"],
+							"query": [
+								{"key": "page", "value": "1"},
+								{"key": "limit", "value": "20"},
+								{"key": "status", "value": "PENDING", "disabled": true},
+								{"key": "subject", "value": "Maths", "disabled": true},
+								{"key": "teacherId", "value": "UUID_HERE", "disabled": true}
+							]
+						}
+					}
+				},
+				{
+					"name": "View Pending Content",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"}],
+						"url": { "raw": "http://localhost:3000/api/admin/content/pending", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "admin", "content", "pending"] }
+					}
+				},
+				{
+					"name": "Approve Content",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"}],
+						"url": { "raw": "http://localhost:3000/api/admin/content/CONTENT_ID_HERE/approve", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "admin", "content", "CONTENT_ID_HERE", "approve"] }
+					}
+				},
+				{
+					"name": "Reject Content",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"},
+							{"key": "Content-Type", "value": "application/json"}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rejectionReason\": \"Content quality is not up to standard, please re-upload with better resolution.\"\n}"
+						},
+						"url": { "raw": "http://localhost:3000/api/admin/content/CONTENT_ID_HERE/reject", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "admin", "content", "CONTENT_ID_HERE", "reject"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Public Student API",
+			"item": [
+				{
+					"name": "Get Live Content (All Subjects)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "http://localhost:3000/api/content/live/TEACHER_ID_HERE", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "content", "live", "TEACHER_ID_HERE"] }
+					}
+				},
+				{
+					"name": "Get Live Content (Filter by Subject)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:3000/api/content/live/TEACHER_ID_HERE?subject=Maths",
+							"protocol": "http", "host": ["localhost"], "port": "3000",
+							"path": ["api", "content", "live", "TEACHER_ID_HERE"],
+							"query": [{"key": "subject", "value": "Maths"}]
+						}
+					}
+				},
+				{
+					"name": "Invalid Teacher ID Validation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "http://localhost:3000/api/content/live/non-existent-id", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "content", "live", "non-existent-id"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Analytics",
+			"item": [
+				{
+					"name": "Subject-wise Analytics",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"}],
+						"url": { "raw": "http://localhost:3000/api/admin/analytics/subjects", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "admin", "analytics", "subjects"] }
+					}
+				},
+				{
+					"name": "Overview Analytics",
+					"request": {
+						"method": "GET",
+						"header": [{"key": "Authorization", "value": "Bearer YOUR_PRINCIPAL_TOKEN_HERE"}],
+						"url": { "raw": "http://localhost:3000/api/admin/analytics/overview", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "admin", "analytics", "overview"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "6. Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "http://localhost:3000/health", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["health"] }
+					}
+				}
+			]
+		}
+	]
+}
