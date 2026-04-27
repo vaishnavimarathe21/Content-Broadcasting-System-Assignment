@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getLiveContentForTeacher } from '../services/scheduling.service';
 import { getCache, setCache } from '../utils/redis';
+import prisma from '../utils/prisma';
 
 export const getLiveContent = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -12,6 +13,18 @@ export const getLiveContent = async (req: Request, res: Response, next: NextFunc
     const cached = await getCache(cacheKey);
     if (cached) {
       return res.status(200).json(JSON.parse(cached));
+    }
+
+    // Validate that the teacher exists before fetching content
+    const teacher = await prisma.user.findUnique({
+      where: { id: teacherId }
+    });
+
+    if (!teacher || teacher.role !== 'TEACHER') {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Teacher not found' 
+      });
     }
 
     const liveContents = await getLiveContentForTeacher(teacherId, subject);
