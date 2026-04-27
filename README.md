@@ -47,7 +47,11 @@ You should see all containers running, and the API will be available at `http://
 
 ### Option 1: Using Postman (Recommended)
 
-I've included a `postman_collection.json` file in the project root. Import it into Postman and follow this testing order:
+I've included a `postman_collection.json` file in the project root. Import it into Postman.
+
+> **Note for Reviewers:** By default, all URLs in the Postman collection point to `http://localhost:3000`. To test the live deployed system, simply replace `http://localhost:3000` with the Live Deployment URL provided in my submission.
+
+Follow this testing order:
 
 1. **Register a Teacher** → Copy the `token` and `user.id` from the response
 2. **Register a Principal** → Copy the `token`
