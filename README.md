@@ -28,37 +28,20 @@ git clone https://github.com/vaishnavimarathe21/Content-Broadcasting-System-Assi
 cd Content-Broadcasting-System-Assignment
 ```
 
-**Step 2:** Install all the dependencies
-```bash
-npm install
-```
-This will automatically generate the Prisma client too (via the `postinstall` script).
-
-**Step 3:** Set up your environment variables
+**Step 2:** Set up your environment variables
 ```bash
 cp .env.example .env
 ```
 Edit the `.env` file and fill in your AWS credentials if you want S3 uploads. If left empty, the system falls back to local storage automatically.
 
-**Step 4:** Start PostgreSQL and Redis
+**Step 3:** Start the Entire System
+Because the infrastructure (Database, Redis) and the Application itself are fully containerized, you can start the entire stack with a single command:
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
+*(This will automatically build the backend API, run the Prisma database migrations, and start the server).*
 
-**Step 5:** Run the database migrations
-```bash
-npx prisma migrate dev --name init
-```
-
-**Step 6:** Start the development server
-```bash
-npm run dev
-```
-You should see:
-```
-Server running on port 3000
-Redis connected successfully
-```
+You should see all containers running, and the API will be available at `http://localhost:3000`.
 
 ## How to Test the System
 
