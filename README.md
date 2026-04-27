@@ -62,7 +62,7 @@ Follow this testing order:
 7. **Reject Content** → Include a rejection reason in the body
 8. **Get Live Content** → Paste teacher ID in URL — see the approved content!
 9. **Test Subject Filter** → Add `?subject=Maths` to the live URL
-10. **Test Error Handling** → Try an invalid teacher ID or invalid subject — should get graceful empty responses
+10. **Test Error Handling** → Try an invalid teacher ID — should get a `404 Not Found` error. Invalid subject returns a clean empty array
 11. **View Analytics** → See subject-wise stats and content usage tracking
 
 
@@ -100,10 +100,15 @@ Follow this testing order:
 | GET    | `/api/content/live/:teacherId`               | Get currently live content (cached via Redis) | No            |
 | GET    | `/api/content/live/:teacherId?subject=Maths` | Filter live content by subject                | No            |
 
+## Live Deployment
+The system is deployed on **AWS EC2**: `http://16.171.173.163:3000`
+
+To test the live deployment, simply replace `http://localhost:3000` with the above URL in Postman.
+
 ## How to Stop Everything
 ```bash
-Ctrl+C                 # Stop the server
-docker-compose down    # Stop PostgreSQL and Redis
+docker-compose down    # Stop all containers (PostgreSQL, Redis, API)
+docker-compose down -v # Stop and wipe the database (fresh start)
 ```
 
 ## Advanced Features Implemented
@@ -114,8 +119,8 @@ docker-compose down    # Stop PostgreSQL and Redis
 5. **Pagination & Filters** — View all content endpoint supports pagination, and filtering by status, subject, and teacher.
 
 ## Assumptions & Notes
-- **Storage:** Files are uploaded to AWS S3 when credentials are configured. If not, the system falls back to local storage in the `uploads/` folder.
-- **Error Handling:** The API gracefully handles scenarios like missing content, content outside of scheduled time windows, or invalid subject filters by returning clean, empty arrays rather than errors.
+- **Storage:** Files are uploaded to AWS S3 when credentials are configured. If not, the system falls back to local storage in the `uploads/` folder. To disable S3, simply comment out `AWS_ACCESS_KEY_ID` in your `.env` file.
+- **Error Handling:** The API returns proper HTTP status codes — `404` for invalid teacher IDs, `400` for duplicate emails, `401` for invalid tokens, and clean empty arrays for valid queries with no results.
 - **Security:** UUIDs for all database IDs, JWT + role-based middleware, Helmet for secure headers, no sensitive data exposure.
 - **Scheduling:** The rotation algorithm is completely stateless — calculates active content on-the-fly using modular arithmetic. No background jobs needed.
 - **Caching:** Redis is optional. If Redis is not available, the system works normally without caching.
