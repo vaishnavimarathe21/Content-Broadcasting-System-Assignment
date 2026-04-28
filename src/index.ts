@@ -15,6 +15,12 @@ import { errorHandler } from './middlewares/error.middleware';
 const app = express();
 const PORT = config.port;
 
+// Swagger API Documentation (served before Helmet so CSP doesn't block it)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Content Broadcasting System - API Docs',
+}));
+
 // Security Middlewares
 app.use(helmet());
 app.use(cors());
@@ -25,12 +31,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (for uploaded content)
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
-
-// Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Content Broadcasting System - API Docs',
-}));
 
 // Routes
 app.use('/api/auth', authRoutes);
