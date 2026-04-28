@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { config } from './config';
 import path from 'path';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 import authRoutes from './routes/auth.routes';
 import contentRoutes from './routes/content.routes';
 import adminRoutes from './routes/admin.routes';
@@ -23,6 +25,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (for uploaded content)
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Content Broadcasting System - API Docs',
+}));
 
 // Routes
 app.use('/api/auth', authRoutes);
