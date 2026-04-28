@@ -1,0 +1,108 @@
+ARCHITECTURE NOTES — Content Broadcasting System
+=================================================
+
+1. Authentication & RBAC Flow
+-----------------------------
+- Authentication is implemented using JWT (JSON Web Tokens).
+- On registration or login, the server generates a signed JWT containing the user's ID and role.
+- The token is sent back in the response body. The client includes it in the Authorization header as "Bearer <token>" for all protected requests.
+- RBAC (Role-Based Access Control) is enforced through two middleware functions:
+    - isTeacher: Checks if the authenticated user has the TEACHER role. Used on upload and my-uploads routes.
+    - isPrincipal: Checks if the authenticated user has the PRINCIPAL role. Used on all admin routes (approve, reject, view all, analytics).
+- The middleware chain on protected routes is: isAuth (verify JWT) → isTeacher/isPrincipal (verify role).
+- If the token is missing, expired, or the role doesn't match, the request is rejected with 401 or 403.
+
+2. Subject-Based System Design
+------------------------------
+- Every piece of content is tied to a subject (e.g., Maths, Science).
+- The ContentSlot table stores unique subjects. When a teacher uploads content for a new subject, a slot is automatically created (upserted).
+- The ContentSchedule table links content to its slot with a rotation order and duration.
+- This design allows each subject to have its own independent rotation cycle.
+- The public broadcasting API groups active schedules by subject and calculates which content is currently live for each subject independently.
+
+3. Upload Handling Approach
+---------------------------
+- File uploads are handled using the Multer middleware.
+- Validation:
+    - Only JPG, PNG, and GIF formats are accepted (validated via both file extension and MIME type).
+    - Maximum file size is 10MB (configured in src/config/index.ts).
+    - Title and Subject are mandatory fields (validated via Zod schema).
+    - Description, startTime, endTime, and rotationDuration are optional.
+- Storage:
+    - If AWS S3 credentials are configured in the environment, files are uploaded directly to S3 using the AWS SDK v3. The public S3 URL is stored in the database.
+    - If AWS credentials are not present, the file is saved to the local /uploads directory. The local path is stored in the database.
+    - This decision is made at runtime using the isS3Configured() utility function, so no code changes are needed to switch between local and cloud storage.
+
+4. Approval Workflow Design
+---------------------------
+- Content follows a strict lifecycle: UPLOADED → PENDING → APPROVED / REJECTED.
+- When a teacher uploads content, the status is set to PENDING.
+- Only a user with the PRINCIPAL role can approve or reject content.
+- Approval: Updates the status to APPROVED, records the principal's ID (approvedById) and timestamp (approvedAt).
+- Rejection: Updates the status to REJECTED and stores the rejection reason (rejectionReason field). The teacher can see this reason when they check their uploads.
+- Only PENDING content can be approved or rejected. Attempting to approve already-approved content returns a 400 error.
+- When content is approved or rejected, the Redis cache for that teacher is automatically invalidated to ensure the live API reflects the change immediately.
+
+5. Scheduling/Rotation Logic (VERY IMPORTANT)
+----------------------------------------------
+- The scheduling algorithm is completely stateless. It does not use cron jobs, timers, or background processes.
+- How it works:
+    1. When a student hits the /content/live/:teacherId endpoint, the system fetches all APPROVED ContentSchedules for that teacher.
+    2. It filters schedules to only include those where the current time falls within the startTime and endTime window.
+       - If startTime or endTime is not set, that content is NOT active (as per assignment requirement).
+    3. Active schedules are grouped by subject.
+    4. For each subject, the system calculates a rotation cycle:
+       - The cycle length is the sum of all durations for that subject (e.g., Content A = 5 min + Content B = 5 min = 10 min cycle).
+       - Using modular arithmetic on the current Unix timestamp in minutes (Math.floor(Date.now() / 60000) % cycleLengthMinutes), the system determines the exact position in the cycle.
+       - It then walks through the schedule list, accumulating durations, to find which content corresponds to that position.
+    5. This means: at any given minute, the system deterministically knows which content is live, without storing any state.
+- This approach supports horizontal scaling because any server instance will compute the same result for the same timestamp.
+
+6. Database Design Decisions
+----------------------------
+- PostgreSQL is the primary database, accessed via Prisma ORM.
+- Four tables:
+    - User: Stores teachers and principals. Uses UUID as primary key. Email is unique. Role is an enum (TEACHER/PRINCIPAL).
+    - Content: Stores all uploaded content with metadata (title, description, subject, fileUrl, fileType, fileSize, status, rejectionReason, approvedBy, approvedAt). Foreign keys to User for uploadedBy and approvedBy.
+    - ContentSlot: Represents a unique subject. Has a unique constraint on the subject field to prevent duplicates.
+    - ContentSchedule: Links Content to ContentSlot with rotation metadata (rotationOrder, durationMinutes, startTime, endTime). This is the core table for the scheduling algorithm.
+- Relationships:
+    - One User (Teacher) → Many Content items.
+    - One User (Principal) → Many approved Content items.
+    - One Content → Many ContentSchedules (a content item can be scheduled in different slots).
+    - One ContentSlot → Many ContentSchedules.
+- UUIDs are used for all primary keys instead of auto-incrementing integers for better security and distributed-system compatibility.
+
+7. Folder Structure
+-------------------
+src/
+├── config/          → Centralized configuration (env variables, limits, AWS config)
+├── controllers/     → Request handlers (auth, content, admin, analytics, public)
+├── middlewares/     → Auth (JWT + RBAC), file upload (Multer), global error handler
+├── models/          → Zod validation schemas for request payloads
+├── routes/          → Express route definitions (auth, content, admin, analytics, public)
+├── services/        → Business logic (scheduling algorithm)
+├── utils/           → Shared utilities (Prisma client, JWT, bcrypt, Redis, S3)
+prisma/
+├── schema.prisma    → Database schema definition
+├── migrations/      → Auto-generated SQL migration files
+
+This structure separates concerns cleanly: routes define endpoints, controllers handle HTTP logic, services contain business logic, and utils provide reusable infrastructure.
+
+8. Middleware Usage
+-------------------
+- isAuth: Extracts and verifies the JWT from the Authorization header. Attaches the decoded user (id, role) to req.user for downstream use.
+- isTeacher: Checks req.user.role === 'TEACHER'. Returns 403 if not.
+- isPrincipal: Checks req.user.role === 'PRINCIPAL'. Returns 403 if not.
+- uploadMiddleware: Multer configuration that validates file type, enforces 10MB size limit, and stores the file temporarily on disk.
+- errorHandler: Global error handler that catches Zod validation errors (400), known errors with status codes, and unexpected errors (500). Ensures consistent JSON error responses.
+- publicApiLimiter: Rate limiter on the public broadcasting API (100 requests per 5 minutes per IP) to prevent abuse.
+
+9. Scalability Approach
+-----------------------
+- Caching: Redis is used to cache the /content/live responses for 60 seconds. Cache keys are structured as live:{teacherId}:{subject|all}. Cache is automatically invalidated when content is approved or rejected.
+- Stateless Scheduling: The rotation algorithm uses modular arithmetic on Unix timestamps, meaning any server instance computes the same result independently. This enables horizontal scaling without shared state.
+- Containerization: The entire stack (PostgreSQL, Redis, API) is containerized with Docker Compose. This ensures consistent environments across development and production, and makes scaling individual services straightforward.
+- Rate Limiting: The public API is protected with express-rate-limit to prevent abuse and DDoS attacks.
+- Database Indexing: Prisma automatically creates indexes on primary keys, unique fields (email, subject), and foreign keys for optimal query performance.
+- Cloud Storage: S3 integration decouples file storage from the application server, allowing the API to scale independently of storage concerns.
